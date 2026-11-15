@@ -1,0 +1,161 @@
+local SettingsModule = {}
+local CoreGui      = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+_G.NexusConnections = _G.NexusConnections or {}
+
+function SettingsModule.Init(Tab, MainUI, RepoConfig, Config)
+    local ScreenGui, MainFrame, SidebarFrame
+    if typeof(MainUI) == "table" then
+        ScreenGui    = MainUI.UI
+        MainFrame    = MainUI.Frame
+        SidebarFrame = MainUI.Sidebar
+    elseif typeof(MainUI) == "Instance" then
+        ScreenGui = MainUI
+    end
+    if not ScreenGui or not ScreenGui.Parent then
+        ScreenGui = CoreGui:FindFirstChild("DynxeHub")
+    end
+
+    local W = Config and Config.Window
+
+    if Config and MainFrame then
+
+        Tab:CreateSection("Customization")
+
+        local themeModule = _G.DynxeTheme
+        if themeModule then
+            Tab:CreateToggle("Dark Theme", themeModule.IsEnabled(), function(state)
+                if state then
+                    themeModule.Enable()
+                else
+                    themeModule.Disable()
+                end
+            end)
+        end
+
+        Tab:CreateSlider("Width", 300, 500, W.Width, function(val)
+            W.Width = val
+            TweenService:Create(MainFrame, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, val, 0, W.Height),
+            }):Play()
+        end)
+
+        Tab:CreateSlider("Height", 400, 600, W.Height, function(val)
+            W.Height = val
+            TweenService:Create(MainFrame, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, W.Width, 0, val),
+            }):Play()
+        end)
+
+        Tab:CreateSlider("Menu Opacity", 0, 100, 85, function(val)
+            TweenService:Create(MainFrame, TweenInfo.new(0.2), {
+                BackgroundTransparency = 1 - (val / 100)
+            }):Play()
+        end)
+    end
+
+    Tab:CreateSection("System")
+
+    _G.DynxeMenuClamped = false
+    Tab:CreateToggle("Clamp Menu", false, function(state)
+        _G.DynxeMenuClamped = state
+    end)
+
+    Tab:CreateKeybind("Toggle Menu", Enum.KeyCode.LeftAlt, function()
+        if ScreenGui then
+            ScreenGui.Enabled = not ScreenGui.Enabled
+        end
+    end)
+
+    local function Unload()
+        _G.NexusActive = false
+        for _, conn in pairs(_G.NexusConnections) do
+            if typeof(conn) == "RBXScriptConnection" and conn.Connected then
+                conn:Disconnect()
+            end
+        end
+        _G.NexusConnections = {}
+        pcall(function() game:GetService("Lighting").ClockTime = 12 end)
+        pcall(function() workspace.CurrentCamera.CameraType = Enum.CameraType.Custom end)
+        if ScreenGui and ScreenGui.Parent then ScreenGui:Destroy() end
+    end
+
+    local ReloadAction = Tab:CreateAction("Reload Script", "Reload", function()
+        Unload()
+        task.wait(0.1)
+        local ok, result = pcall(function()
+            return game:HttpGet("https://api.dynxe.services/loader")
+        end)
+        if ok and result and result ~= "" then
+            local fn = loadstring(result)
+            if fn then fn() else warn("[Settings] Reload: loadstring failed") end
+        else
+            warn("[Settings] Reload: HttpGet failed — " .. tostring(result))
+        end
+    end)
+    ReloadAction:SetDisabled(true)
+
+    local UnloadAction = Tab:CreateAction("Unload Script", "Unload", Unload)
+    UnloadAction:SetDisabled(true)
+
+    Tab:CreateSection("Data Management")
+
+    Tab:CreateAction("Open Folder", "Open", function()
+        pcall(function()
+            if isfolder and not isfolder("Dynxe") then
+                makefolder("Dynxe")
+            end
+        end)
+    
+        local opened = false
+    
+        -- Synapse X
+        if not opened and syn and syn.open_folder then
+            pcall(function() syn.open_folder("Dynxe") end)
+            opened = true
+        end
+    
+        -- Fluxus / some others
+        if not opened and explorerfolder then
+            pcall(function() explorerfolder("Dynxe") end)
+            opened = true
+        end
+    
+        -- Krnl / Wave / some others
+        if not opened and openfolder then
+            pcall(function() openfolder("Dynxe") end)
+            opened = true
+        end
+    
+        -- openfile fallback
+        if not opened and openfile then
+            pcall(function() openfile("Dynxe") end)
+            opened = true
+        end
+    
+        if not opened then
+            warn("[Settings] Executor: " .. tostring(identifyexecutor and identifyexecutor() or "unknown") .. " does not support opening folders.")
+        end
+    end)
+
+    local FolderAction = Tab:CreateAction("Delete Folder", "Delete", function()
+        pcall(function()
+            if isfolder and isfolder("Dynxe") then
+                delfolder("Dynxe")
+            elseif isfile and isfile("Dynxe") then
+                delfile("Dynxe")
+            end
+        end)
+
+        task.wait(0.5)
+
+        pcall(function()
+            game:GetService("Players").LocalPlayer:Kick(
+                "\n[Dynxe Hub]\nData reset initiated.\n\nThe 'Dynxe' folder has been removed.\nPlease rejoin to generate new configs."
+            )
+        end)
+    end)
+    FolderAction:AddTooltip("Deletes the storage folder for Dynxe. Also kicks you from the game to prevent any errors from occuring.")
+end
+
+return SettingsModule
