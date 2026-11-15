@@ -1,8 +1,8 @@
-local User    = "learnhtsd"
-local Repo    = "lt2"
+local User    = "kingstongames10-ops"
+local Repo    = "lt2-hub"
 local Branch  = "main"
 local Version = "v0.0.755"
-local BaseURL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ" api.dynxe.services
+local BaseURL = "https://raw.githubusercontent.com/kingstongames10-ops/lt2-hub/main"
 
 if _G.__DynxeLoaded then
     warn("[Dynxe] Already loaded — ignoring duplicate execution.")
@@ -3034,6 +3034,17 @@ end
 -- ============================================================
 -- MODULE LOADING
 -- ============================================================
+
+local function LoadModule(name)
+    local url = BaseURL .. "/Modules/" .. name .. ".lua"
+    local ok, src = pcall(function() return game:HttpGet(url) end)
+    if not ok or type(src) ~= "string" or src == "" or src:find("404: Not Found") then
+        error("download failed: " .. name)
+    end
+    local fn, cerr = loadstring(src, "=" .. name)
+    if not fn then error("compile failed: " .. name .. " - " .. tostring(cerr)) end
+    return fn()
+end
 
 local LooseObjectTeleportModule = nil
 local LooseObjectTeleportReady = false

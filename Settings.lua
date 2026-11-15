@@ -84,7 +84,7 @@ function SettingsModule.Init(Tab, MainUI, RepoConfig, Config)
         Unload()
         task.wait(0.1)
         local ok, result = pcall(function()
-            return game:HttpGet("https://api.dynxe.services/loader")
+            return game:HttpGet("https://raw.githubusercontent.com/kingstongames10-ops/lt2-hub/main/main.lua")
         end)
         if ok and result and result ~= "" then
             local fn = loadstring(result)
